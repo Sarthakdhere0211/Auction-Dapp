@@ -2,6 +2,11 @@
 
 A production-ready, real-time auction platform on **Stellar Testnet** using **Soroban smart contracts**, a **React + TypeScript + Vite** frontend, premium **Tailwind + shadcn/ui** design, and multi‑wallet support (**Freighter + Albedo**).
 
+
+## 🌐 Live Demo
+
+🚀 Live App: https://auctiondap.vercel.app
+
 ---
 
 ## Overview
