@@ -126,7 +126,7 @@ Or on Windows PowerShell:
 Create `.env` at repository root (preferred) or `frontend/.env`:
 
 ```env
-VITE_CONTRACT_ID=<YOUR_DEPLOYED_CONTRACT_ID>
+VITE_CONTRACT_ID=CAHTZRPJVT4SLLOQA3UW5N5XRV3IOHBH2SR4MBREZ75LHIRYGP4NOSKN
 VITE_SOROBAN_RPC_URL=https://soroban-testnet.stellar.org
 VITE_STELLAR_NETWORK=TESTNET
 VITE_HORIZON_URL=https://horizon-testnet.stellar.org
