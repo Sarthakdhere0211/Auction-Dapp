@@ -149,17 +149,6 @@ VITE_HORIZON_URL=https://horizon-testnet.stellar.org
 - Type‑safe forms with zod + react‑hook‑form; debounced inputs
 - Global state via Zustand
 
-## Contract Address
-
-> **Testnet Contract ID:** `[Deploy and paste here]`
-
----
-
-## Example Transaction Hash
-
-> `[Paste a real tx hash from Stellar Expert after deploying]`
-
----
 
 ## Explorer Verification
 
@@ -189,12 +178,9 @@ After placing a bid, the UI shows a transaction hash with a direct link to:
 
 ## Screenshots
 
-> *(Add screenshots after running the app)*
+<img width="1380" height="375" alt="Screenshot 2026-02-26 141107" src="https://github.com/user-attachments/assets/0ce421c5-9454-4fd0-84f5-18cf6183a05b" />
 
-- Landing page
-- Dashboard (auction grid)
-- Auction detail page
-- Profile page
+<img width="1911" height="864" alt="Screenshot 2026-02-26 195640" src="https://github.com/user-attachments/assets/6b115002-290a-467d-8a21-918bbaf9772a" />
 
 ---
 
