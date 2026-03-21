@@ -35,7 +35,7 @@ export function getEnv(): AppEnv {
 
   const masked = CONTRACT_ID ? `${CONTRACT_ID.slice(0, 6)}...${CONTRACT_ID.slice(-6)}` : '(empty)'
   console.info('[ENV] network=', STELLAR_NETWORK, 'horizon=', HORIZON_URL, 'contract=', masked, 'txTimeout=', TX_TIMEOUT_SECS)
-  console.log('Contract ID:', import.meta.env.VITE_CONTRACT_ID)
+  console.log('Loaded Contract ID:', import.meta.env.VITE_CONTRACT_ID)
 
   return cached
 }

@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { ExternalLink, CheckCircle, XCircle, Loader2, ShieldCheck, Wallet, AlertTriangle } from 'lucide-react';
+import { ExternalLink, CheckCircle, XCircle, Loader2, ShieldCheck, Wallet, AlertTriangle, Clock } from 'lucide-react';
 import { Auction } from '../types';
 import { ContractAuctionState } from '../contract';
 import { AuctionStatus } from '../utils/auctionStatus';
 import AuctionStatusBadge from './AuctionStatusBadge';
 import CountdownTimer from './CountdownTimer';
 import { getTxUrl } from '../config/stellar';
-import { setAuctionEndTime } from '../contract';
+import { setAuctionEndTime, NETWORK_PASSPHRASE } from '../contract';
 import { signTransaction } from '../wallet';
 
 interface BidPanelProps {
@@ -34,12 +34,12 @@ const BidPanel: React.FC<BidPanelProps> = ({
     const [validationError, setValidationError] = useState('');
     const [nowSeconds, setNowSeconds] = useState<number>(Math.floor(Date.now() / 1000));
 
-    // Determine if bidding is allowed
+    // Bidding always allowed when wallet connected; contract decides (extends auction if ended)
     const walletConnected = !!walletAddress;
     const isInitialized = contractState?.is_initialized === true;
-    const isLive = auctionStatus === AuctionStatus.LIVE;
-    const currentHighestBid = contractState?.highest_bid || auction.highestBid;
-    const minRequired = Math.max(auction.minBid, currentHighestBid + 1);
+    const isLive = auctionStatus === AuctionStatus.LIVE || auctionStatus === AuctionStatus.NOT_INITIALIZED;
+    const currentHighestBid = contractState?.highest_bid ?? auction.highestBid ?? 0;
+    const minRequired = Math.max(auction.minBid, currentHighestBid > 0 ? currentHighestBid + 1 : auction.minBid);
     const isOwner = walletAddress && contractState?.owner === walletAddress;
     const canRestart = isOwner && auctionStatus === AuctionStatus.ENDED && !contractState?.highest_bidder;
     const [isRestarting, setIsRestarting] = useState(false);
@@ -47,17 +47,11 @@ const BidPanel: React.FC<BidPanelProps> = ({
     const [restartSuccess, setRestartSuccess] = useState<string | null>(null);
     const [durationMinutes, setDurationMinutes] = useState<number>(120);
 
+    const biddingOpen = true;
     const canBidNow = walletConnected;
     const disabledReason = !walletConnected
-        ? 'Wallet not connected'
+        ? 'Connect your wallet to place a bid'
         : undefined;
-
-    console.log({
-        walletConnected,
-        auctionStatus,
-        contractState,
-        auctionData: auction,
-    });
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -152,8 +146,8 @@ const BidPanel: React.FC<BidPanelProps> = ({
                     )}
                 </div>
             )}
-            {/* Countdown Timer (only when LIVE) */}
-            {isLive && contractState?.end_time && (
+            {/* Countdown Timer only when auction is live and end_time is in the future */}
+            {contractState?.is_initialized && contractState?.end_time > 0 && contractState.end_time > nowSeconds && (
                 <div className="p-6 rounded-2xl bg-gray-950 border border-gray-800">
                     <CountdownTimer
                         endTime={contractState.end_time}
@@ -179,28 +173,26 @@ const BidPanel: React.FC<BidPanelProps> = ({
                         </p>
                     </div>
                 </div>
-                <div className="mt-4 grid grid-cols-2 gap-3 text-[10px]">
-                    <div className="rounded-xl bg-gray-900/50 border border-gray-800 p-3">
-                        <p className="font-black text-gray-500 uppercase tracking-widest">Initialized</p>
-                        <p className="font-black text-white">{isInitialized ? 'true' : 'false'}</p>
+                {contractState?.is_initialized && (
+                    <div className="mt-4 grid grid-cols-2 gap-3 text-[10px]">
+                        <div className="rounded-xl bg-gray-900/50 border border-gray-800 p-3">
+                            <p className="font-black text-gray-500 uppercase tracking-widest">End Time</p>
+                            <p className="font-black text-white">{contractState?.end_time ?? '—'}</p>
+                        </div>
+                        <div className="rounded-xl bg-gray-900/50 border border-gray-800 p-3">
+                            <p className="font-black text-gray-500 uppercase tracking-widest">Ledger Time</p>
+                            <p className="font-black text-white">{nowSeconds}</p>
+                        </div>
+                        <div className="rounded-xl bg-gray-900/50 border border-gray-800 p-3">
+                            <p className="font-black text-gray-500 uppercase tracking-widest">Highest Bid</p>
+                            <p className="font-black text-white">{currentHighestBid ?? '—'} XLM</p>
+                        </div>
+                        <div className="rounded-xl bg-gray-900/50 border border-gray-800 p-3">
+                            <p className="font-black text-gray-500 uppercase tracking-widest">Status</p>
+                            <p className="font-black text-white">{auctionStatus}</p>
+                        </div>
                     </div>
-                    <div className="rounded-xl bg-gray-900/50 border border-gray-800 p-3">
-                        <p className="font-black text-gray-500 uppercase tracking-widest">End Time</p>
-                        <p className="font-black text-white">{contractState?.end_time ?? '—'}</p>
-                    </div>
-                    <div className="rounded-xl bg-gray-900/50 border border-gray-800 p-3">
-                        <p className="font-black text-gray-500 uppercase tracking-widest">Ledger Time</p>
-                        <p className="font-black text-white">{nowSeconds}</p>
-                    </div>
-                    <div className="rounded-xl bg-gray-900/50 border border-gray-800 p-3">
-                        <p className="font-black text-gray-500 uppercase tracking-widest">Highest Bid</p>
-                        <p className="font-black text-white">{currentHighestBid ?? '—'} XLM</p>
-                    </div>
-                    <div className="rounded-xl bg-gray-900/50 border border-gray-800 p-3">
-                        <p className="font-black text-gray-500 uppercase tracking-widest">Status</p>
-                        <p className="font-black text-white">{auctionStatus}</p>
-                    </div>
-                </div>
+                )}
                 <div className="pt-4 border-t border-gray-800 flex justify-between items-center">
                     <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">
                         Min. Increment
@@ -222,7 +214,8 @@ const BidPanel: React.FC<BidPanelProps> = ({
                 )}
             </div>
 
-            {/* Bid Form */}
+            {/* Bid Form — only show when auction is open for bids */}
+            {biddingOpen && (
             <form onSubmit={handleSubmit} className="space-y-4">
                     <div className="space-y-2">
                         <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1">
@@ -273,29 +266,20 @@ const BidPanel: React.FC<BidPanelProps> = ({
                         Network fee: ~0.01 XLM
                     </p>
                 </form>
+            )}
 
-            {/* Disabled reason banner */}
-            {!isLive && (
-                <div className="p-6 rounded-2xl bg-gray-950 border border-gray-800 text-center space-y-3">
-                    <div className="w-10 h-10 rounded-xl bg-gray-500/10 flex items-center justify-center mx-auto">
-                        {auctionStatus === AuctionStatus.NOT_INITIALIZED ? (
-                            <AlertTriangle size={20} className="text-amber-500" />
-                        ) : (
-                            <XCircle size={20} className="text-red-500" />
-                        )}
+            {/* When auction time has ended, show message that a bid can reopen it */}
+            {auctionStatus === AuctionStatus.ENDED && (
+                <div className="p-6 rounded-2xl bg-amber-500/5 border border-amber-500/20 text-center space-y-3">
+                    <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center mx-auto">
+                        <Clock size={20} className="text-amber-500" />
                     </div>
-                    <h4 className="text-xs font-black text-gray-400 uppercase tracking-widest">
-                        {disabledReason || 'Bidding Not Available'}
+                    <h4 className="text-xs font-black text-amber-400 uppercase tracking-widest">
+                        Time Ended — You Can Still Bid
                     </h4>
-                    <p className="text-[10px] text-gray-500 leading-relaxed font-bold uppercase">
-                        {auctionStatus === AuctionStatus.NOT_INITIALIZED
-                            ? 'Contract owner must initialize the auction first'
-                            : auctionStatus === AuctionStatus.ENDED
-                            ? 'This auction has ended and settled'
-                            : 'Bidding is currently unavailable'}
+                    <p className="text-[10px] text-amber-400/90 leading-relaxed font-bold uppercase">
+                        Place a bid below to reopen the auction for 1 hour. The contract will accept your bid and extend automatically.
                     </p>
-
-                    {/* Initialization removed per simplified flow */}
 
                     {canRestart && (
                         <div className="pt-3">
@@ -322,7 +306,7 @@ const BidPanel: React.FC<BidPanelProps> = ({
                                     setIsRestarting(true);
                                     try {
                                         const result = await setAuctionEndTime(walletAddress!, durationMinutes, async (xdr) => {
-                                            return await signTransaction(xdr, 'Test SDF Network ; September 2015', 'freighter');
+                                            return await signTransaction(xdr, NETWORK_PASSPHRASE, 'freighter');
                                         });
                                         if (result.success) {
                                             setRestartSuccess(`Started. Tx: ${result.txHash}`);

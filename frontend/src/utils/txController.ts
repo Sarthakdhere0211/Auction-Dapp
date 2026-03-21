@@ -23,8 +23,7 @@ export class TxController {
   private options: Required<TxControllerOptions>;
 
   constructor(server: rpc.Server, options?: TxControllerOptions) {
-    const env = getEnv();
-    const timeout = options?.timeoutSecs ?? env.TX_TIMEOUT_SECS;
+    const timeout = options?.timeoutSecs ?? getEnv().TX_TIMEOUT_SECS;
     const bounded =
       options?.timeoutSecs != null
         ? Math.max(0.001, timeout) // allow tiny timeouts for tests

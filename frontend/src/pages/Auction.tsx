@@ -3,10 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Tag, Clock, TrendingUp, ExternalLink, ShieldCheck, History, Search, Box, Award, Shield, Globe, Activity } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Auction, BidRecord, WalletState } from '../types';
-import { getAuction, getBidHistory, placeBid, startBidEventPolling, stopBidEventPolling, getContractIsInitialized, getContractAuctionStatus, initializeAuction } from '../contract';
-import { orchestrateBid } from '../utils/bidOrchestrator';
+import { getAuction, getBidHistory, placeBid, startBidEventPolling, stopBidEventPolling, NETWORK_PASSPHRASE } from '../contract';
 import { signTransaction, isFreighterInstalled } from '../wallet';
-import { NETWORK_PASSPHRASE } from '../contract';
 import BidPanel from '../components/BidPanel';
 import AuctionStatusBanner from '../components/AuctionStatusBanner';
 import TxStatusModal from '../components/TxStatusModal';
@@ -113,47 +111,24 @@ const AuctionPage: React.FC<AuctionPageProps> = ({ wallet }) => {
         setShowTxModal(true);
 
         try {
-            const result = await orchestrateBid(
-                wallet.publicKey,
-                amount,
-                120,
-                {
-                    isInitialized: async () => await getContractIsInitialized(),
-                    getStatus: async () => await getContractAuctionStatus(),
-                    initialize: async (owner, startPriceXlm, durationMins) => {
-                        const tx = await initializeAuction(owner, startPriceXlm, durationMins, async (xdr) => {
-                            try {
-                                return await signTransaction(xdr, NETWORK_PASSPHRASE, 'freighter');
-                            } catch {
-                                return await signTransaction(xdr, NETWORK_PASSPHRASE, 'albedo');
-                            }
-                        });
-                        return tx;
-                    },
-                    bid: async (amountXlm) => {
-                        const res = await placeBid(
-                            auctionId,
-                            wallet.publicKey as string,
-                            amountXlm,
-                            async (xdr) => {
-                                try {
-                                    return await signTransaction(xdr, NETWORK_PASSPHRASE, 'freighter');
-                                } catch {
-                                    return await signTransaction(xdr, NETWORK_PASSPHRASE, 'albedo');
-                                }
-                            }
-                        );
-                        return res;
-                    },
+            const signFn = async (xdr: string) => {
+                try {
+                    return await signTransaction(xdr, NETWORK_PASSPHRASE, 'freighter');
+                } catch {
+                    return await signTransaction(xdr, NETWORK_PASSPHRASE, 'albedo');
                 }
-            );
-            setTxHash(result.txHash);
+            };
+            const result = await placeBid(auctionId, wallet.publicKey, amount, signFn);
+
+            setTxHash(result.txHash || null);
             if (result.success) {
-                toast.success(`Bid placed successfully! Tx: ${result.txHash}`);
+                toast.success('Bid placed successfully!');
                 await loadData();
                 await refresh();
             } else {
-                throw new Error(result.error);
+                const errMsg = result.error ?? 'Transaction failed';
+                setTxError(errMsg);
+                toast.error(errMsg);
             }
         } catch (err) {
             const msg = (err as Error).message ?? 'Unknown error';
@@ -193,7 +168,7 @@ const AuctionPage: React.FC<AuctionPageProps> = ({ wallet }) => {
         );
     }
 
-    const isLive = auctionStatus === 'live';
+    const isLive = auctionStatus === 'live' || auctionStatus === 'not_started' || auctionStatus === 'ended';
 
     return (
         <div className="space-y-12">
@@ -386,6 +361,7 @@ const AuctionPage: React.FC<AuctionPageProps> = ({ wallet }) => {
                 onOpenChange={setShowTxModal}
                 status={isPlacingBid ? 'pending' : txHash ? 'success' : txError ? 'failed' : 'pending'}
                 txHash={txHash}
+                error={txError}
             />
         </div>
     );

@@ -1,5 +1,5 @@
 import React from 'react';
-import { AlertTriangle, Clock, CheckCircle, XCircle, Loader2 } from 'lucide-react';
+import { Clock, CheckCircle, XCircle, Loader2 } from 'lucide-react';
 import { AuctionStatus, getStatusInfo } from '../utils/auctionStatus';
 
 interface AuctionStatusBannerProps {
@@ -56,19 +56,20 @@ const AuctionStatusBanner: React.FC<AuctionStatusBannerProps> = ({ status, error
     // Render based on status
     if (status === AuctionStatus.NOT_INITIALIZED) {
         return (
-            <div className={`${info.bgColor} border ${info.borderColor} rounded-xl p-4`}>
+            <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-4">
                 <div className="flex items-center gap-3">
-                    <div className={`w-8 h-8 rounded-lg ${info.bgColor} flex items-center justify-center`}>
-                        <AlertTriangle className={info.textColor} size={18} />
+                    <div className="w-8 h-8 rounded-lg bg-emerald-500/20 flex items-center justify-center">
+                        <Clock className="text-emerald-500" size={18} />
                     </div>
                     <div>
-                        <p className={`text-[11px] font-black ${info.textColor} uppercase tracking-wider`}>
-                            Auction Not Initialized
+                        <p className="text-[11px] font-black text-emerald-500 uppercase tracking-wider">
+                            Ready for Bids
                         </p>
-                        <p className="text-[10px] text-amber-400/80 font-bold uppercase tracking-tight">
-                            Initialize the auction to begin bidding
+                        <p className="text-[10px] text-emerald-400/80 font-bold uppercase tracking-tight">
+                            Enter your bid below to start the auction — no setup required
                         </p>
                     </div>
+                    <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
                 </div>
             </div>
         );
@@ -100,14 +101,14 @@ const AuctionStatusBanner: React.FC<AuctionStatusBannerProps> = ({ status, error
             <div className={`${info.bgColor} border ${info.borderColor} rounded-xl p-4`}>
                 <div className="flex items-center gap-3">
                     <div className={`w-8 h-8 rounded-lg ${info.bgColor} flex items-center justify-center`}>
-                        <CheckCircle className={info.textColor} size={18} />
+                        <Clock className={info.textColor} size={18} />
                     </div>
                     <div>
                         <p className={`text-[11px] font-black ${info.textColor} uppercase tracking-wider`}>
-                            Auction Ended
+                            Time Ended — Place a Bid to Reopen
                         </p>
-                        <p className="text-[10px] text-red-400/80 font-bold uppercase tracking-tight">
-                            Bidding is closed • Winner has been determined
+                        <p className="text-[10px] text-amber-400/80 font-bold uppercase tracking-tight">
+                            Your bid will be accepted and the auction will extend by 1 hour automatically
                         </p>
                     </div>
                 </div>

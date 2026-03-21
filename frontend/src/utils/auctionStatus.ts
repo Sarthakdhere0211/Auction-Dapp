@@ -61,23 +61,23 @@ export function getStatusInfo(status: AuctionStatus): AuctionStatusInfo {
         case AuctionStatus.ENDED:
             return {
                 status: AuctionStatus.ENDED,
-                label: 'ENDED',
-                color: 'red',
-                bgColor: 'bg-red-500/10',
-                textColor: 'text-red-500',
-                borderColor: 'border-red-500/20',
-                canBid: false,
+                label: 'CAN REOPEN',
+                color: 'yellow',
+                bgColor: 'bg-amber-500/10',
+                textColor: 'text-amber-500',
+                borderColor: 'border-amber-500/20',
+                canBid: true,
             };
 
         case AuctionStatus.NOT_INITIALIZED:
             return {
                 status: AuctionStatus.NOT_INITIALIZED,
-                label: 'NOT INITIALIZED',
-                color: 'yellow',
-                bgColor: 'bg-amber-500/10',
-                textColor: 'text-amber-500',
-                borderColor: 'border-amber-500/20',
-                canBid: false,
+                label: 'OPEN',
+                color: 'green',
+                bgColor: 'bg-emerald-500/10',
+                textColor: 'text-emerald-500',
+                borderColor: 'border-emerald-500/20',
+                canBid: true,
             };
 
         default:

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Clock, CheckCircle, AlertTriangle } from 'lucide-react';
+import { Clock, CheckCircle } from 'lucide-react';
 import { AuctionStatus, getStatusInfo } from '../utils/auctionStatus';
 
 interface AuctionStatusBadgeProps {
@@ -17,7 +17,7 @@ const AuctionStatusBadge: React.FC<AuctionStatusBadgeProps> = ({ status, classNa
             case AuctionStatus.ENDED:
                 return <CheckCircle size={14} className={info.textColor} />;
             case AuctionStatus.NOT_INITIALIZED:
-                return <AlertTriangle size={14} className={info.textColor} />;
+                return <Clock size={14} className={info.textColor} />;
             default:
                 return null;
         }
@@ -31,7 +31,7 @@ const AuctionStatusBadge: React.FC<AuctionStatusBadgeProps> = ({ status, classNa
             <span className="text-[10px] font-black uppercase tracking-widest">
                 {info.label}
             </span>
-            {status === AuctionStatus.LIVE && (
+            {(status === AuctionStatus.LIVE || status === AuctionStatus.NOT_INITIALIZED || status === AuctionStatus.ENDED) && (
                 <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
             )}
         </div>
