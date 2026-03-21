@@ -188,6 +188,14 @@ After placing a bid, the UI shows a transaction hash with a direct link to:
 
 ---
 
+## ## 🎥 Demo
+
+[Watch Demo](./frontend/demo.mp4)
+---
+
+## Test 
+<img width="1564" height="468" alt="image" src="https://github.com/user-attachments/assets/1a7bb24a-81b7-4b9b-91ad-ecc8c5f63120" />
+
 ## Environment Notes
 
 - Env lives at the project root and is loaded by Vite.
