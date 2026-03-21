@@ -13,5 +13,8 @@
     "build": "npm --prefix \"frontend\" run build",
     "preview": "npm --prefix \"frontend\" run preview",
     "lint": "npm --prefix \"frontend\" run lint"
+  },
+  "devDependencies": {
+    "vitest": "^4.1.0"
   }
 }
