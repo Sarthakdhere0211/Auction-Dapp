@@ -126,7 +126,11 @@ Or on Windows PowerShell:
 .\scripts\deploy.ps1 -SecretKey <YOUR_SECRET_KEY>
 ```
 
-### 4. Configure Frontend
+### 4. Redeploy if you see "Auction has ended" when placing a bid
+
+If the UI shows the auction as OPEN but placing a bid fails with **"Auction has ended"**, the contract on the network is an older version. The current contract **reopens the auction** when someone bids after the end time. Redeploy the contract (step 3 above or `.\scripts\deploy.ps1 -SecretKey <YOUR_SECRET_KEY>`); the script will update `.env` with the new contract ID. Restart the frontend and try placing a bid again.
+
+### 5. Configure Frontend
 
 Create `.env` at repository root (preferred) or `frontend/.env`:
 
