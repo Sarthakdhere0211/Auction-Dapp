@@ -5,7 +5,7 @@ A production-ready, real-time auction platform on **Stellar Testnet** using **So
 
 ## 🌐 Live Demo
 
-🚀 Live App: https://auctiondap.vercel.app
+🚀 Live App: https://auctiondapp.vercel.app
 
 ---
 
@@ -187,7 +187,26 @@ After placing a bid, the UI shows a transaction hash with a direct link to:
 <img width="1911" height="864" alt="Screenshot 2026-02-26 195640" src="https://github.com/user-attachments/assets/6b115002-290a-467d-8a21-918bbaf9772a" />
 
 ---
+##Screenshot or badge: CI/CD pipeline running
 
+<img width="1919" height="867" alt="Screenshot 2026-03-25 201020" src="https://github.com/user-attachments/assets/7c433a48-9324-4f4a-8abe-79f238c38254" />
+
+---
+
+##Screenshot: mobile responsive view
+
+<img width="783" height="720" alt="Screenshot 2026-03-25 203001" src="https://github.com/user-attachments/assets/11d79199-34a7-43e5-930d-f45fdf685712" />
+
+<img width="753" height="735" alt="Screenshot 2026-03-25 203021" src="https://github.com/user-attachments/assets/e18bc1cd-f809-49f4-b4ca-f4b9d2220566" />
+
+<img width="728" height="752" alt="Screenshot 2026-03-25 203052" src="https://github.com/user-attachments/assets/207a8e5f-521f-4fca-8791-7d402b978e81" />
+
+---
+##Screenshot Contract addresses and transaction hash
+
+<img width="1782" height="345" alt="Screenshot 2026-03-25 202358" src="https://github.com/user-attachments/assets/b0dbe3dc-eeb9-4045-876a-87f294a40d16" />
+
+---
 ## ## 🎥 Demo
 
 [Watch Demo](./frontend/demo.mp4)
