@@ -25,7 +25,7 @@ export default function TxStatusModal({ open, status, txHash, error, onOpenChang
         <div className="flex flex-col gap-3 py-3">
           <div className="flex items-center gap-3">
             <Icon className={`${color} ${status === 'pending' ? 'animate-spin' : ''}`} />
-            <p className="text-sm text-gray-300 flex-1">
+            <p className="text-sm text-gray-300 flex-1 break-words">
               {status === 'pending' && 'Please confirm in your wallet, then submitting to Soroban RPC…'}
               {status === 'success' && 'Included in ledger.'}
               {status === 'failed' && (error || 'The transaction failed.')}

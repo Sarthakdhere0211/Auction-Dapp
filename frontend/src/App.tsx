@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
-import { Toaster } from 'react-hot-toast';
+import { Toaster, toast } from 'react-hot-toast';
 import { AlertTriangle } from 'lucide-react';
 import { WalletState } from './types';
 import { connectWallet, checkWalletConnection, isFreighterInstalled, isAlbedoInstalled, WalletProvider } from './wallet';
@@ -10,7 +10,6 @@ import Home from './pages/Home';
 import Dashboard from './pages/Dashboard';
 import AuctionPage from './pages/Auction';
 import Profile from './pages/Profile';
-import toast from 'react-hot-toast';
 import ProtectedRoute from './components/ProtectedRoute';
 import { useWalletStore } from './store/useWalletStore';
 import { validateEnv } from './env';
@@ -82,7 +81,9 @@ function AppShell() {
       setWallet({ ...state, balance });
       setWalletStore({ ...state, balance, selectedWallet: prov });
       toast.success(`Connected with ${prov === 'freighter' ? 'Freighter' : 'Albedo'}`);
-      navigate('/auction', { replace: true });
+      if (window.location.pathname === '/') {
+        navigate('/auction', { replace: true });
+      }
     } catch (err) {
       const msg = (err as Error).message;
       toast.error(msg);
@@ -121,8 +122,8 @@ function AppShell() {
             </div>
           </div>
         )}
-        <div className="flex-1 w-full max-w-6xl mx-auto px-6 py-10">
-          <div className="space-y-10">
+        <div className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 py-6 md:py-10">
+          <div className="space-y-6 md:space-y-10">
             {/* Navbar Area (Simplified structure inside the pages or shared) */}
             <Navbar
               wallet={wallet}

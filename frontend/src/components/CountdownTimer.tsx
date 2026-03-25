@@ -17,37 +17,18 @@ const CountdownTimer: React.FC<CountdownTimerProps> = ({
     showIcon = true,
     size = 'md',
 }) => {
-    const [timeRemaining, setTimeRemaining] = useState(0);
-    const [localTime, setLocalTime] = useState(currentTimeSeconds);
-
-    useEffect(() => {
-        setLocalTime(currentTimeSeconds);
-    }, [currentTimeSeconds]);
-
-    useEffect(() => {
-        const remaining = getTimeRemaining(endTime, localTime);
-        setTimeRemaining(remaining);
-        if (remaining === 0 && onExpire) {
-            onExpire();
-        }
-    }, [endTime, localTime, onExpire]);
-
-    useEffect(() => {
-        const timeout = setTimeout(() => {
-            setLocalTime((prev) => (prev > 0 ? prev + 1 : prev));
-        }, 0);
-        const interval = setInterval(() => {
-            setLocalTime((prev) => (prev > 0 ? prev + 1 : prev));
-        }, 1000);
-
-        return () => {
-            clearTimeout(timeout);
-            clearInterval(interval);
-        };
-    }, []);
-
+    // Sanitize endTime: if it's in milliseconds (e.g. 1711382400000), convert to seconds
+    const effectiveEndTime = endTime > 10000000000 ? Math.floor(endTime / 1000) : endTime;
+    
+    const timeRemaining = Math.max(0, effectiveEndTime - currentTimeSeconds);
     const isExpired = timeRemaining === 0;
     const isUrgent = timeRemaining > 0 && timeRemaining < 300; // Less than 5 minutes
+
+    useEffect(() => {
+        if (isExpired && onExpire) {
+            onExpire();
+        }
+    }, [isExpired, onExpire]);
 
     const getSizeClasses = () => {
         switch (size) {
@@ -60,15 +41,15 @@ const CountdownTimer: React.FC<CountdownTimerProps> = ({
             case 'lg':
                 return {
                     container: 'text-base',
-                    time: 'text-5xl',
+                    time: 'text-3xl sm:text-4xl md:text-5xl',
                     icon: 24,
                 };
             case 'md':
             default:
                 return {
-                    container: 'text-base',
-                    time: 'text-3xl',
-                    icon: 20,
+                    container: 'text-[10px] sm:text-xs',
+                    time: 'text-sm sm:text-base md:text-lg lg:text-xl',
+                    icon: 16,
                 };
         }
     };
@@ -87,7 +68,7 @@ const CountdownTimer: React.FC<CountdownTimerProps> = ({
             )}
 
             <div
-                className={`font-mono font-black ${sizeClasses.time} ${
+                className={`font-mono font-black whitespace-nowrap ${sizeClasses.time} ${
                     isExpired
                         ? 'text-red-500'
                         : isUrgent
@@ -96,10 +77,6 @@ const CountdownTimer: React.FC<CountdownTimerProps> = ({
                 }`}
             >
                 {formatTimeRemaining(timeRemaining)}
-            </div>
-
-            <div className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">
-                {isExpired ? 'Auction Ended' : formatTimeRemainingHuman(timeRemaining)}
             </div>
         </div>
     );

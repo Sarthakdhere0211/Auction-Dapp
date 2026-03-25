@@ -101,49 +101,28 @@ export function getTimeRemaining(endTime: number, currentTimeSeconds: number): n
 }
 
 /**
- * Format time remaining as HH:MM:SS
+ * Format time remaining into a clean, compact hours-based format (Hh Mm Ss).
+ * Example: 3661 -> 1h 1m 1s
  */
 export function formatTimeRemaining(seconds: number): string {
     if (seconds <= 0) {
-        return '00:00:00';
+        return '00h 00m 00s';
     }
 
     const hours = Math.floor(seconds / 3600);
     const minutes = Math.floor((seconds % 3600) / 60);
     const secs = seconds % 60;
 
-    return [
-        hours.toString().padStart(2, '0'),
-        minutes.toString().padStart(2, '0'),
-        secs.toString().padStart(2, '0'),
-    ].join(':');
+    const pad = (num: number) => String(num).padStart(2, '0');
+
+    return `${pad(hours)}h ${pad(minutes)}m ${pad(secs)}s`;
 }
 
 /**
- * Format time remaining as human-readable string
+ * Alias for backward compatibility with existing components
  */
 export function formatTimeRemainingHuman(seconds: number): string {
-    if (seconds <= 0) {
-        return 'Ended';
-    }
-
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    const secs = seconds % 60;
-
-    const parts: string[] = [];
-
-    if (hours > 0) {
-        parts.push(`${hours}h`);
-    }
-    if (minutes > 0) {
-        parts.push(`${minutes}m`);
-    }
-    if (hours === 0 && secs > 0) {
-        parts.push(`${secs}s`);
-    }
-
-    return parts.join(' ') || '0s';
+    return formatTimeRemaining(seconds);
 }
 
 /**

@@ -10,71 +10,54 @@ interface TimeLeft {
     hours: number;
     minutes: number;
     seconds: number;
-    days: number;
 }
 
 function calcTimeLeft(endTime: number): TimeLeft {
     const diff = Math.max(0, endTime - Math.floor(Date.now() / 1000));
-    const days = Math.floor(diff / 86400);
-    const hours = Math.floor((diff % 86400) / 3600);
+    const hours = Math.floor(diff / 3600);
     const minutes = Math.floor((diff % 3600) / 60);
     const seconds = diff % 60;
-    return { days, hours, minutes, seconds };
+    return { hours, minutes, seconds };
 }
 
 const Countdown: React.FC<CountdownProps> = ({ endTime, isEnded, className = '' }) => {
-    const [timeLeft, setTimeLeft] = useState<TimeLeft>({ days: 0, hours: 0, minutes: 0, seconds: 0 });
+    const [timeLeft, setTimeLeft] = useState<TimeLeft>({ hours: 0, minutes: 0, seconds: 0 });
     const [expired, setExpired] = useState(isEnded);
 
     useEffect(() => {
         if (isEnded) {
-            const timeout = setTimeout(() => {
-                setExpired(true);
-            }, 0);
-            return () => clearTimeout(timeout);
+            setExpired(true);
+            return;
         }
         const interval = setInterval(() => {
             const t = calcTimeLeft(endTime);
             setTimeLeft(t);
-            if (t.days === 0 && t.hours === 0 && t.minutes === 0 && t.seconds === 0) {
+            if (t.hours === 0 && t.minutes === 0 && t.seconds === 0) {
                 setExpired(true);
                 clearInterval(interval);
             }
         }, 1000);
-        const timeout = setTimeout(() => {
-            const t = calcTimeLeft(endTime);
-            setTimeLeft(t);
-            if (t.days === 0 && t.hours === 0 && t.minutes === 0 && t.seconds === 0) {
-                setExpired(true);
-            }
-        }, 0);
-        return () => {
-            clearTimeout(timeout);
-            clearInterval(interval);
-        };
+        const t = calcTimeLeft(endTime);
+        setTimeLeft(t);
+        if (t.hours === 0 && t.minutes === 0 && t.seconds === 0) {
+            setExpired(true);
+        }
+        return () => clearInterval(interval);
     }, [endTime, isEnded]);
 
     if (expired || isEnded) {
         return (
-            <span className={`text-red-400 font-semibold text-sm ${className}`}>
-                Auction Ended
+            <span className={`text-red-400 font-black text-[10px] uppercase tracking-widest ${className}`}>
+                Ended
             </span>
         );
     }
 
     const pad = (n: number) => String(n).padStart(2, '0');
 
-    if (timeLeft.days > 0) {
-        return (
-            <span className={`font-mono font-bold text-emerald-400 ${className}`}>
-                {timeLeft.days}d {pad(timeLeft.hours)}h {pad(timeLeft.minutes)}m
-            </span>
-        );
-    }
-
     return (
-        <span className={`font-mono font-bold ${timeLeft.hours === 0 && timeLeft.minutes < 10 ? 'text-orange-400' : 'text-emerald-400'} ${className}`}>
-            {pad(timeLeft.hours)}:{pad(timeLeft.minutes)}:{pad(timeLeft.seconds)}
+        <span className={`font-mono font-black ${timeLeft.hours === 0 && timeLeft.minutes < 10 ? 'text-orange-400' : 'text-emerald-400'} ${className}`}>
+            {timeLeft.hours > 0 ? `${timeLeft.hours}h ` : ''}{pad(timeLeft.minutes)}m {pad(timeLeft.seconds)}s
         </span>
     );
 };

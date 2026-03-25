@@ -11,6 +11,7 @@ export interface Auction {
     highestBid: number;
     highestBidder: string | null;
     isEnded: boolean;
+    buyNowPrice?: number | null;
 }
 
 export interface BidRecord {

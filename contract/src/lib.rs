@@ -1,20 +1,24 @@
 #![no_std]
 
-//! Stellar Soroban Auction Smart Contract
-//! Production-ready implementation
+//! Stellar Soroban Auction Smart Contract - Production Ready
+//! Upgraded with Token Bidding, Anti-Sniping, and Buy Now features.
 
 use soroban_sdk::{
-    contract, contracterror, contractevent, contractimpl, contracttype, Address, Env,
+    contract, contracterror, contractevent, contractimpl, contracttype, token, Address, Env,
 };
 
 #[contracttype]
 pub enum DataKey {
     Initialized,
     Owner,
+    TokenId,
     StartingPrice,
     HighestBid,
     HighestBidder,
     EndTime,
+    BuyNowPrice,
+    IsEnded,
+    Finalized,
 }
 
 #[contracterror]
@@ -28,37 +32,41 @@ pub enum AuctionError {
     AlreadyInitialized = 5,
     InvalidEndTime = 6,
     InvalidAmount = 7,
+    InsufficientAllowance = 8,
+    BuyNowNotSet = 9,
 }
 
-#[contractevent(topics = ["auction_initialized"], data_format = "single-value")]
+#[contractevent]
 pub struct AuctionInitializedEvent {
-    #[topic]
     pub owner: Address,
+    pub token_id: Address,
     pub end_time: u64,
 }
 
-#[contractevent(topics = ["bid_placed"], data_format = "single-value")]
+#[contractevent]
 pub struct BidPlacedEvent {
-    #[topic]
     pub bidder: Address,
     pub amount: i128,
 }
 
-#[contractevent(topics = ["end_time_updated"], data_format = "single-value")]
-pub struct EndTimeUpdatedEvent {
-    #[topic]
-    pub owner: Address,
-    pub new_end_time: u64,
+#[contractevent]
+pub struct AuctionEndedEvent {
+    pub winner: Option<Address>,
+    pub amount: i128,
 }
 
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Auction {
     pub owner: Address,
+    pub token_id: Address,
     pub starting_price: i128,
     pub highest_bid: i128,
     pub highest_bidder: Option<Address>,
     pub end_time: u64,
+    pub buy_now_price: Option<i128>,
+    pub is_ended: bool,
+    pub finalized: bool,
 }
 
 #[contract]
@@ -66,68 +74,40 @@ pub struct AuctionContract;
 
 #[contractimpl]
 impl AuctionContract {
-
-    // ----------------------------
-    // Helper Functions
-    // ----------------------------
-
-    pub fn is_initialized(env: Env) -> bool {
-        match env.storage().instance().get::<DataKey, bool>(&DataKey::Initialized) {
-            Some(v) => v,
-            None => false,
-        }
-    }
-
-    pub fn is_live(env: Env) -> bool {
-        if !Self::is_initialized(env.clone()) {
-            return false;
-        }
-
-        let end_time = match env.storage().instance().get::<DataKey, u64>(&DataKey::EndTime) {
-            Some(v) => v,
-            None => return false,
-        };
-
-        env.ledger().timestamp() < end_time
-    }
-
-    // ----------------------------
-    // Initialize Auction
-    // ----------------------------
-
     pub fn initialize(
         env: Env,
         owner: Address,
+        token_id: Address,
         starting_price: i128,
         end_time: u64,
+        buy_now_price: Option<i128>,
     ) -> Result<(), AuctionError> {
-
-        if Self::is_initialized(env.clone()) {
+        if env.storage().instance().has(&DataKey::Initialized) {
             return Err(AuctionError::AlreadyInitialized);
         }
 
         let now = env.ledger().timestamp();
-
         if end_time <= now {
             return Err(AuctionError::InvalidEndTime);
         }
-
         if starting_price < 0 {
             return Err(AuctionError::BidTooLow);
         }
 
         env.storage().instance().set(&DataKey::Owner, &owner);
+        env.storage().instance().set(&DataKey::TokenId, &token_id);
         env.storage().instance().set(&DataKey::StartingPrice, &starting_price);
         env.storage().instance().set(&DataKey::HighestBid, &starting_price);
-
-        let none_bidder: Option<Address> = None;
-        env.storage().instance().set(&DataKey::HighestBidder, &none_bidder);
-
+        env.storage().instance().set(&DataKey::HighestBidder, &Option::<Address>::None);
         env.storage().instance().set(&DataKey::EndTime, &end_time);
+        env.storage().instance().set(&DataKey::BuyNowPrice, &buy_now_price);
+        env.storage().instance().set(&DataKey::IsEnded, &false);
+        env.storage().instance().set(&DataKey::Finalized, &false);
         env.storage().instance().set(&DataKey::Initialized, &true);
 
         AuctionInitializedEvent {
             owner,
+            token_id,
             end_time,
         }
         .publish(&env);
@@ -135,236 +115,150 @@ impl AuctionContract {
         Ok(())
     }
 
-    // ----------------------------
-    // Place Bid
-    // ----------------------------
-
-    pub fn place_bid(
-        env: Env,
-        bidder: Address,
-        amount: i128,
-    ) -> Result<(), AuctionError> {
-
+    pub fn place_bid(env: Env, bidder: Address, amount: i128) -> Result<(), AuctionError> {
         bidder.require_auth();
 
-        if amount <= 0 {
-            return Err(AuctionError::InvalidAmount);
+        if !env.storage().instance().has(&DataKey::Initialized) {
+            return Err(AuctionError::AuctionNotInitialized);
         }
 
-        if !Self::is_initialized(env.clone()) {
-            let now = env.ledger().timestamp();
-            let end_time = now + 3600;
-
-            env.storage().instance().set(&DataKey::Owner, &bidder.clone());
-            env.storage().instance().set(&DataKey::StartingPrice, &amount);
-            env.storage().instance().set(&DataKey::HighestBid, &amount);
-
-            let some_bidder: Option<Address> = Some(bidder.clone());
-            env.storage().instance().set(&DataKey::HighestBidder, &some_bidder);
-
-            env.storage().instance().set(&DataKey::EndTime, &end_time);
-            env.storage().instance().set(&DataKey::Initialized, &true);
-
-            AuctionInitializedEvent {
-                owner: bidder.clone(),
-                end_time,
-            }
-            .publish(&env);
-
-            BidPlacedEvent {
-                bidder,
-                amount,
-            }
-            .publish(&env);
-
-            return Ok(());
-        }
-
-        let end_time = match env.storage().instance().get::<DataKey, u64>(&DataKey::EndTime) {
-            Some(v) => v,
-            None => return Err(AuctionError::AuctionNotInitialized),
-        };
-
+        let is_ended: bool = env.storage().instance().get(&DataKey::IsEnded).unwrap();
+        let end_time: u64 = env.storage().instance().get(&DataKey::EndTime).unwrap();
         let now = env.ledger().timestamp();
 
-        // When auction has ended, extend by 1 hour and accept this bid (never return AuctionEnded).
-        if now >= end_time {
-            let new_end = now + 3600;
-
-            env.storage().instance().set(&DataKey::Owner, &bidder.clone());
-            env.storage().instance().set(&DataKey::StartingPrice, &amount);
-            env.storage().instance().set(&DataKey::HighestBid, &amount);
-
-            let some_bidder: Option<Address> = Some(bidder.clone());
-            env.storage().instance().set(&DataKey::HighestBidder, &some_bidder);
-
-            env.storage().instance().set(&DataKey::EndTime, &new_end);
-            env.storage().instance().set(&DataKey::Initialized, &true);
-
-            AuctionInitializedEvent {
-                owner: bidder.clone(),
-                end_time: new_end,
-            }
-            .publish(&env);
-
-            BidPlacedEvent {
-                bidder,
-                amount,
-            }
-            .publish(&env);
-
-            return Ok(());
+        if is_ended || now >= end_time {
+            return Err(AuctionError::AuctionEnded);
         }
 
-        let highest_bid = match env
-            .storage()
-            .instance()
-            .get::<DataKey, i128>(&DataKey::HighestBid)
-        {
-            Some(v) => v,
-            None => return Err(AuctionError::AuctionNotInitialized),
-        };
-
+        let highest_bid: i128 = env.storage().instance().get(&DataKey::HighestBid).unwrap();
         if amount <= highest_bid {
             return Err(AuctionError::BidTooLow);
         }
 
-        env.storage().instance().set(&DataKey::HighestBid, &amount);
+        let token_id: Address = env.storage().instance().get(&DataKey::TokenId).unwrap();
+        let token_client = token::Client::new(&env, &token_id);
 
-        let some_bidder: Option<Address> = Some(bidder.clone());
-
-        env.storage().instance().set(&DataKey::HighestBidder, &some_bidder);
-
-        BidPlacedEvent {
-            bidder,
-            amount,
-        }
-        .publish(&env);
-
-        Ok(())
-    }
-
-    // ----------------------------
-    // Update Auction End Time
-    // ----------------------------
-
-    pub fn set_end_time(
-        env: Env,
-        caller: Address,
-        new_end_time: u64,
-    ) -> Result<(), AuctionError> {
-
-        if !Self::is_initialized(env.clone()) {
-            return Err(AuctionError::AuctionNotInitialized);
+        // Check allowance
+        let allowance = token_client.allowance(&bidder, &env.current_contract_address());
+        if allowance < amount {
+            return Err(AuctionError::InsufficientAllowance);
         }
 
-        caller.require_auth();
-
-        let owner = match env.storage().instance().get::<DataKey, Address>(&DataKey::Owner) {
-            Some(v) => v,
-            None => return Err(AuctionError::AuctionNotInitialized),
-        };
-
-        if caller != owner {
-            return Err(AuctionError::Unauthorized);
-        }
-
-        let now = env.ledger().timestamp();
-
-        if new_end_time <= now {
-            return Err(AuctionError::InvalidEndTime);
-        }
-
-        env.storage().instance().set(&DataKey::EndTime, &new_end_time);
-
-        EndTimeUpdatedEvent {
-            owner,
-            new_end_time,
-        }
-        .publish(&env);
-
-        Ok(())
-    }
-
-    // ----------------------------
-    // Get Auction Data
-    // ----------------------------
-
-    pub fn get_auction(env: Env) -> Result<Auction, AuctionError> {
-
-        if !Self::is_initialized(env.clone()) {
-            return Err(AuctionError::AuctionNotInitialized);
-        }
-
-        let owner = env
-            .storage()
-            .instance()
-            .get::<DataKey, Address>(&DataKey::Owner)
-            .ok_or(AuctionError::AuctionNotInitialized)?;
-
-        let starting_price = env
-            .storage()
-            .instance()
-            .get::<DataKey, i128>(&DataKey::StartingPrice)
-            .ok_or(AuctionError::AuctionNotInitialized)?;
-
-        let highest_bid = env
-            .storage()
-            .instance()
-            .get::<DataKey, i128>(&DataKey::HighestBid)
-            .ok_or(AuctionError::AuctionNotInitialized)?;
-
-        let highest_bidder: Option<Address> = match env
+        // Refund previous bidder if exists
+        if let Some(prev_bidder) = env
             .storage()
             .instance()
             .get::<DataKey, Option<Address>>(&DataKey::HighestBidder)
+            .unwrap()
         {
-            Some(v) => v,
-            None => None,
-        };
+            token_client.transfer(&env.current_contract_address(), &prev_bidder, &highest_bid);
+        }
 
-        let end_time = env
+        // Transfer tokens from new bidder to contract using transfer_from
+        token_client.transfer_from(&env.current_contract_address(), &bidder, &env.current_contract_address(), &amount);
+
+        // Update state
+        env.storage().instance().set(&DataKey::HighestBid, &amount);
+        env.storage().instance().set(&DataKey::HighestBidder, &Some(bidder.clone()));
+
+        // Anti-sniping: If bid is placed within 5 minutes of end, extend by 5 minutes
+        if end_time - now < 300 {
+            let new_end_time = end_time + 300;
+            env.storage().instance().set(&DataKey::EndTime, &new_end_time);
+        }
+
+        // Check Buy Now
+        if let Some(buy_now_price) = env
             .storage()
             .instance()
-            .get::<DataKey, u64>(&DataKey::EndTime)
-            .ok_or(AuctionError::AuctionNotInitialized)?;
+            .get::<DataKey, Option<i128>>(&DataKey::BuyNowPrice)
+            .unwrap()
+        {
+            if amount >= buy_now_price {
+                env.storage().instance().set(&DataKey::IsEnded, &true);
+                AuctionEndedEvent {
+                    winner: Some(bidder.clone()),
+                    amount,
+                }
+                .publish(&env);
+            }
+        }
+
+        BidPlacedEvent { bidder, amount }.publish(&env);
+
+        Ok(())
+    }
+
+    pub fn buy_now(env: Env, bidder: Address) -> Result<(), AuctionError> {
+        bidder.require_auth();
+
+        let buy_now_price = env
+            .storage()
+            .instance()
+            .get::<DataKey, Option<i128>>(&DataKey::BuyNowPrice)
+            .unwrap()
+            .ok_or(AuctionError::BuyNowNotSet)?;
+
+        Self::place_bid(env, bidder, buy_now_price)
+    }
+
+    pub fn finalize(env: Env) -> Result<(), AuctionError> {
+        let is_ended: bool = env.storage().instance().get(&DataKey::IsEnded).unwrap();
+        let finalized: bool = env.storage().instance().get(&DataKey::Finalized).unwrap();
+        let end_time: u64 = env.storage().instance().get(&DataKey::EndTime).unwrap();
+        let now = env.ledger().timestamp();
+
+        if !is_ended && now < end_time {
+            return Err(AuctionError::Unauthorized); // Too early
+        }
+
+        if finalized {
+            return Ok(());
+        }
+
+        let owner: Address = env.storage().instance().get(&DataKey::Owner).unwrap();
+        let highest_bid: i128 = env.storage().instance().get(&DataKey::HighestBid).unwrap();
+        let highest_bidder: Option<Address> =
+            env.storage().instance().get(&DataKey::HighestBidder).unwrap();
+
+        let token_id: Address = env.storage().instance().get(&DataKey::TokenId).unwrap();
+        let token_client = token::Client::new(&env, &token_id);
+
+        if let Some(winner) = highest_bidder.clone() {
+            token_client.transfer(&env.current_contract_address(), &owner, &highest_bid);
+            AuctionEndedEvent {
+                winner: Some(winner),
+                amount: highest_bid,
+            }
+            .publish(&env);
+        } else {
+            AuctionEndedEvent {
+                winner: None,
+                amount: 0,
+            }
+            .publish(&env);
+        }
+
+        env.storage().instance().set(&DataKey::IsEnded, &true);
+        env.storage().instance().set(&DataKey::Finalized, &true);
+        Ok(())
+    }
+
+    pub fn get_auction(env: Env) -> Result<Auction, AuctionError> {
+        if !env.storage().instance().has(&DataKey::Initialized) {
+            return Err(AuctionError::AuctionNotInitialized);
+        }
 
         Ok(Auction {
-            owner,
-            starting_price,
-            highest_bid,
-            highest_bidder,
-            end_time,
+            owner: env.storage().instance().get(&DataKey::Owner).unwrap(),
+            token_id: env.storage().instance().get(&DataKey::TokenId).unwrap(),
+            starting_price: env.storage().instance().get(&DataKey::StartingPrice).unwrap(),
+            highest_bid: env.storage().instance().get(&DataKey::HighestBid).unwrap(),
+            highest_bidder: env.storage().instance().get(&DataKey::HighestBidder).unwrap(),
+            end_time: env.storage().instance().get(&DataKey::EndTime).unwrap(),
+            buy_now_price: env.storage().instance().get(&DataKey::BuyNowPrice).unwrap(),
+            is_ended: env.storage().instance().get(&DataKey::IsEnded).unwrap(),
+            finalized: env.storage().instance().get(&DataKey::Finalized).unwrap(),
         })
-    }
-
-    // ----------------------------
-    // Auction Status
-    // ----------------------------
-
-    pub fn get_auction_status(env: Env) -> u32 {
-
-        if !Self::is_initialized(env.clone()) {
-            return 0;
-        }
-
-        let end_time = match env.storage().instance().get::<DataKey, u64>(&DataKey::EndTime) {
-            Some(v) => v,
-            None => return 0,
-        };
-
-        if env.ledger().timestamp() >= end_time {
-            return 2;
-        }
-
-        1
-    }
-
-    // ----------------------------
-    // Current Ledger Time
-    // ----------------------------
-
-    pub fn current_time(env: Env) -> u64 {
-        env.ledger().timestamp()
     }
 }

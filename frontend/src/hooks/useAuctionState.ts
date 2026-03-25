@@ -21,7 +21,8 @@ export interface UseAuctionStateReturn {
   initialize: (
     owner: string,
     startingPrice: number,
-    durationMinutes: number
+    durationMinutes: number,
+    buyNowPrice?: number | null
   ) => Promise<TxResult>;
 }
 
@@ -68,7 +69,8 @@ export function useAuctionState(
     async (
       owner: string,
       startingPrice: number,
-      durationMinutes: number
+      durationMinutes: number,
+      buyNowPrice: number | null = null
     ): Promise<TxResult> => {
       setIsLoading(true);
       setError(null);
@@ -78,6 +80,7 @@ export function useAuctionState(
           owner,
           startingPrice,
           durationMinutes,
+          buyNowPrice,
           async (xdr) => {
             return await signTransaction(xdr, NETWORK_PASSPHRASE, "freighter");
           }
